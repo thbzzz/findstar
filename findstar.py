@@ -11,7 +11,23 @@ from colorama import Fore, Style
 
 
 class Findstar:
+    """Class for finding GitHub starred repositories by searching for strings
+    in their description and README.md.
+    """
+
     def __init__(self, username, greps, filter_and=False, flush=False):
+        """Perform cache operations to access stored data, or communicate with
+        the GitHub API if flush in set to True.
+        Then, display the filtered repositories.
+
+        Args:
+            username (str): GitHub username.
+            greps (list): List of strings to grep for.
+            filter_and (bool, optional): Match repositories according to
+                greps using AND instead of OR. Defaults to False.
+            flush (bool, optional): Refresh cache data before searching for
+                greps. Defaults to False.
+        """
         self.username = username
         self.greps = greps
         self.filter_and = filter_and
@@ -60,6 +76,11 @@ class Findstar:
         self.display()
 
     def display(self):
+        """Output the matching repositories.
+        The repo names are in bold green.
+        The repo url are in blue.
+        The matching lines are normal, only grepped keywords are red.
+        """
         for star in self.matching_stars:
             name = Style.BRIGHT + Fore.GREEN + \
                 star["name"] + Fore.RESET + Style.RESET_ALL
@@ -78,6 +99,11 @@ class Findstar:
             print()
 
     def _print_loading(self, string):
+        """Print loading messages on the same line.
+
+        Args:
+            string (str): String to print.
+        """
         print(
             Fore.MAGENTA + string.ljust(
                 get_terminal_size()[0]
@@ -85,6 +111,11 @@ class Findstar:
         )
 
     def _match_grep(self):
+        """Filter the starred repositories according to provided keywords.
+
+        Returns:
+            list: List of stars matching keywords.
+        """
         matching_stars = []
 
         for star in self.stars:
@@ -116,6 +147,8 @@ class Findstar:
         return matching_stars
 
     def _fetch_stars(self):
+        """Fetch all starred repositories of a GitHub user.
+        """
         self._print_loading(f"Fetching page 1/x...")
         self.stars = self._fetch_page(1)
 
@@ -128,6 +161,14 @@ class Findstar:
         self._print_loading("Fetch complete\n")
 
     def _fetch_page(self, page):
+        """Fetch starred respositories contained in a page of the GitHub API.
+
+        Args:
+            page (int): Page number. The first page number is 1.
+
+        Returns:
+            list: List of fetched stars on the page.
+        """
         endpoint = f"{self.endpoint}&page={page}"
         r = requests.get(endpoint)
 
@@ -150,26 +191,51 @@ class Findstar:
         return stars
 
     def _has_cache(self):
+        """Check if a cache file exists for the provided user.
+
+        Returns:
+            bool: True/False
+        """
         return isfile(self.cache_file)
 
     def _read_cache(self):
+        """Read the cached data for the provided user.
+
+        Returns:
+            list: List of cached stars.
+        """
         with open(self.cache_file) as f:
             try:
                 return json.loads(f.read())
             except json.JSONDecodeError:
-                return ""
+                return []
 
     def _write_cache(self):
+        """Write the cached data for the provided user.
+        """
         with open(self.cache_file, 'w') as f:
             f.write(json.dumps(self.stars))
 
     def _init_cache(self):
+        """Create the cache file for the provided user.
+        """
         open(self.cache_file, "w").close()
 
     def _empty_cache(self):
+        """Empty the cache file for the provided user.
+        """
         open(self.cache_file, "w").close()
 
     def _parse_link_header(self, response):
+        """Parse the "link" HTTP header sent by GitHub API to determine the
+        last page containing user's starred repositories.
+
+        Args:
+            response (requests.Response): HTTP response from GitHub API.
+
+        Returns:
+            int: Last page number.
+        """
         if "link" in response.headers.keys():
             link = requests.utils.parse_header_links(
                 response.headers["link"]
@@ -183,6 +249,15 @@ class Findstar:
         return last_page
 
     def _fetch_readme(self, full_name, default_branch):
+        """Fetch a repositories README.md's content, if found.
+
+        Args:
+            full_name (str): Full name of the repository: owner/name.
+            default_branch (str): Generally "master" or "main".
+
+        Returns:
+            str: README.md content if it exists, empty otherwise.
+        """
         self._print_loading(f"Fetching README.md for {full_name}...")
         url = "https://raw.githubusercontent.com/{}/{}/README.md".format(
             full_name,
@@ -192,6 +267,8 @@ class Findstar:
         r = requests.get(url, allow_redirects=True)
         if r.status_code == 200:
             return r.text
+        else:
+            return ""
 
 
 if __name__ == "__main__":
