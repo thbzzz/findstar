@@ -6,20 +6,23 @@ from os.path import isdir, isfile, join
 import requests
 import json
 
+from argparse import ArgumentParser
 from colorama import Fore, Style
 
 
 class Findstar:
-    def __init__(self, username, grep, per_page=50, flush_cache=False):
+    def __init__(self, username, greps, filter_and=False, flush=False):
         self.username = username
-        self.grep = grep
-        self.per_page = per_page
+        self.greps = greps
+        self.filter_and = filter_and
+        self.flush = flush
+
+        self.per_page = 50
         self.last_page = 1
         self.endpoint = f"https://api.github.com/users/{self.username}/starred?per_page={self.per_page}"
 
         self.cache_dir = "cache"
         self.cache_file = join(self.cache_dir, self.username + ".json")
-        self.flush_cache = flush_cache
 
         self.stars = []
 
@@ -27,7 +30,7 @@ class Findstar:
             mkdir(self.cache_dir, mode=0o755)
 
         # User wants to flush the cache
-        if self.flush_cache:
+        if self.flush:
             # Does the cache exist?
             if self._has_cache:
                 # If yes, empty it
@@ -53,6 +56,9 @@ class Findstar:
         # Get stars matching grep
         self.matching_stars = self._match_grep()
 
+        # Display matched stars
+        self.display()
+
     def display(self):
         for star in self.matching_stars:
             name = Style.BRIGHT + Fore.GREEN + \
@@ -62,10 +68,11 @@ class Findstar:
             print(f"{name} ({html_url})")
 
             for match in star["matches"]:
-                match = match.replace(
-                    self.grep,
-                    Fore.RED + self.grep + Fore.RESET
-                ).strip()
+                for grep in self.greps:
+                    match = match.replace(
+                        grep,
+                        Fore.RED + grep + Fore.RESET
+                    ).strip()
                 print(f"- {match}")
 
             print()
@@ -83,16 +90,28 @@ class Findstar:
         for star in self.stars:
             matches = []
 
+            # Search for greps in the repo's description and readme
             for key in ["description", "readme"]:
-                if star[key]:
+                if star[key]:  # Maybe the description or readme is empty
                     for line in star[key].split("\n"):
-                        if self.grep in line:
+                        if any(g in line for g in self.greps):
                             matches.append(line)
-                            pass
 
             if matches:
                 star["matches"] = matches
-                matching_stars.append(star)
+
+                if self.filter_and:
+                    # Match by AND (if "--and" argument is specified): select
+                    # the repo if all of greps are present
+                    if all(
+                        [any(
+                            [g in line for line in star["matches"]]
+                        ) for g in self.greps]
+                    ):
+                        matching_stars.append(star)
+                else:
+                    # Match by OR: select the repo if any of greps is present,
+                    matching_stars.append(star)
 
         return matching_stars
 
@@ -113,7 +132,7 @@ class Findstar:
         r = requests.get(endpoint)
 
         if page == 1:
-            self.last_page = self._parse_last_page(r)
+            self.last_page = self._parse_link_header(r)
 
         fetched_stars = json.loads(r.text)
 
@@ -150,7 +169,7 @@ class Findstar:
     def _empty_cache(self):
         open(self.cache_file, "w").close()
 
-    def _parse_last_page(self, response):
+    def _parse_link_header(self, response):
         if "link" in response.headers.keys():
             link = requests.utils.parse_header_links(
                 response.headers["link"]
@@ -176,8 +195,32 @@ class Findstar:
 
 
 if __name__ == "__main__":
-    username = "thbzzz"
-    grep = "table"
-    flush_cache = False
-    findstar = Findstar(username, grep, flush_cache=flush_cache)
-    findstar.display()
+    parser = ArgumentParser(
+        description="Grep over your github starred repositories!"
+    )
+    parser.add_argument(
+        "-u",
+        "--username",
+        help="github username",
+        required=True
+    )
+    parser.add_argument(
+        "-f",
+        "--flush",
+        action="store_true",
+        help="refresh cache"
+    )
+    parser.add_argument(
+        "-a",
+        "--and",
+        action="store_true",
+        dest="filter_and",
+        help="match greps using AND instead of OR"
+    )
+    parser.add_argument(
+        "greps",
+        nargs="*",
+        help="strings to grep for",
+    )
+
+    findstar = Findstar(**vars(parser.parse_args()))
