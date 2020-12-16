@@ -4,6 +4,8 @@ Findstar is a Python CLI utility to quickly retrieve a repository that you starr
 
 You can search through every user's starred repositories for keywords, kind of like grep.
 
+[![asciicast](https://asciinema.org/a/WkgsS7r6St9uF1UP4oTFM9NCv.svg)](https://asciinema.org/a/WkgsS7r6St9uF1UP4oTFM9NCv)
+
 ## Installation
 
 Clone the repo and install requirements.
@@ -35,7 +37,6 @@ optional arguments:
 At first run with each username, its starred repositories are fetched from the GitHub's API, and cached in the file `cache/{username}` as zlib-compressed json data.
 
 Next times you run `findstar.py -u {username}`, the default behavior is to get the starred repos list from the username's cache file. You can however force fetching stars from GitHub's API by adding the `-f` flag.
-
 
 ## Examples
 
