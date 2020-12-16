@@ -4,7 +4,7 @@ Findstar is a Python CLI utility to quickly retrieve a repository that you starr
 
 You can search through every user's starred repositories for keywords, kind of like grep.
 
-[![asciicast](https://asciinema.org/a/WkgsS7r6St9uF1UP4oTFM9NCv.svg)](https://asciinema.org/a/WkgsS7r6St9uF1UP4oTFM9NCv)
+![asciinema](assets/asciinema.gif)
 
 ## Installation
 
