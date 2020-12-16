@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 import json
+import re
 from argparse import ArgumentParser
 from os import get_terminal_size, mkdir, remove
 from os.path import dirname, isdir, isfile, join, realpath
+from time import sleep
 from zlib import compress, decompress
+from zlib import error as ZlibError
 
 import requests
 from colorama import Fore, Style
@@ -66,8 +69,18 @@ class Findstar:
                 self.cache.create_file()
                 self.cache.write(self.stars)
             else:
-                # If yes, read stars from cache
-                self.stars = self.cache.read()
+                # If yes, try to read stars from cache
+                try:
+                    self.stars = self.cache.read()
+                except ZlibError:
+                    # In case of error decoding cache data, empty cache,
+                    # then fetch stars from GitHub and write cache
+                    self.loading(
+                        "Error reading stars from cache, pulling from github")
+                    sleep(2)
+                    self.cache.empty()
+                    self.fetch_stars()
+                    self.cache.write(self.stars)
 
         # Get stars matching grep
         self.matching_stars = self.filter_stars()
@@ -97,32 +110,35 @@ class Findstar:
         matching_stars = []
 
         for star in self.stars:
+            match = False
             matches = []
 
-            # Search for greps in the repo's description and readme
-            for key in ["description", "readme"]:
-                try:
-                    for line in getattr(star, key).split("\n"):
-                        if any(g in line for g in self.greps):
-                            matches.append(line)
-                except AttributeError:
-                    pass
+            # Search over repo's description and readme
+            sources = ["description", "readme"]
+            content = "\n".join([getattr(star, src) for src in sources])
 
-            if matches:
+            # Are we searching with AND or OR?
+            if self.filter_and:
+                # Search with AND: every keyword must be in content
+                match = all([
+                    re.search(g, content, re.IGNORECASE) for g in self.greps
+                ])
+            else:
+                # Search with OR: at least one keyword in content
+                match = any([
+                    re.search(g, content, re.IGNORECASE) for g in self.greps
+                ])
+
+            if match:
+                # The repo matches, extract the matching lines
+                for line in content.split("\n"):
+                    for g in self.greps:
+                        if re.search(g, line, re.IGNORECASE):
+                            if line not in matches:
+                                matches.append(line)
+
                 star.matches = matches
-
-                if self.filter_and:
-                    # Match by AND (if "--and" argument is specified): select
-                    # the repo if all of greps are present
-                    if all(
-                        [any(
-                            [g in line for line in star.matches]
-                        ) for g in self.greps]
-                    ):
-                        matching_stars.append(star)
-                else:
-                    # Match by OR: select the repo if any of greps is present,
-                    matching_stars.append(star)
+                matching_stars.append(star)
 
         return matching_stars
 
@@ -230,8 +246,8 @@ class Star:
         self.full_name = kwargs["full_name"]
         self.html_url = kwargs["html_url"]
         self.default_branch = kwargs["default_branch"]
-        self.description = kwargs["description"]
-        self.readme = kwargs["readme"]
+        self.description = kwargs["description"] or ""
+        self.readme = kwargs["readme"] or ""
         self.matches = []  # Set by Findstar.filter_stars method
 
     def display(self, greps):
@@ -248,10 +264,17 @@ class Star:
 
         for match in self.matches:
             for grep in greps:
-                match = match.replace(
-                    grep, Fore.RED + grep + Fore.RESET
-                ).strip()
-            print(f"- {match}")
+                match = re.sub(
+                    r"({})".format(
+                        grep
+                    ),
+                    r"{}\1{}".format(
+                        Fore.RED, Fore.RESET
+                    ),
+                    match,
+                    flags=re.IGNORECASE
+                )
+            print(f"- {match.strip()}")
 
         print()
 
