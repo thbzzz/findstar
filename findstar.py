@@ -18,7 +18,8 @@ class Findstar:
     in their description and README.md.
     """
 
-    def __init__(self, username, greps, filter_and=False, flush=False):
+    def __init__(self, username, greps, filter_and=False, flush=False,
+                 case_sensitive=False):
         """Perform cache operations to access stored data, or communicate with
         the GitHub API if flush in set to True.
         Then, display the filtered repositories.
@@ -30,11 +31,14 @@ class Findstar:
                 greps using AND instead of OR. Defaults to False.
             flush (bool, optional): Refresh cache data before searching for
                 greps. Defaults to False.
+            case_sensitive (bool, optional): Filter stars case-sensitively
+                or not. Defaults to False.
         """
         self.username = username
         self.greps = greps
         self.filter_and = filter_and
         self.flush = flush
+        self.case = int(case_sensitive) or re.IGNORECASE
 
         self.cache = Cache(self.username)
 
@@ -87,7 +91,7 @@ class Findstar:
 
         # Display matched stars
         for star in self.matching_stars:
-            star.display(self.greps)
+            star.display(self.greps, self.case)
 
     def loading(self, string):
         """Print loading messages on the same line.
@@ -121,19 +125,19 @@ class Findstar:
             if self.filter_and:
                 # Search with AND: every keyword must be in content
                 match = all([
-                    re.search(g, content, re.IGNORECASE) for g in self.greps
+                    re.search(g, content, flags=self.case) for g in self.greps
                 ])
             else:
                 # Search with OR: at least one keyword in content
                 match = any([
-                    re.search(g, content, re.IGNORECASE) for g in self.greps
+                    re.search(g, content, flags=self.case) for g in self.greps
                 ])
 
             if match:
                 # The repo matches, extract the matching lines
                 for line in content.split("\n"):
                     for g in self.greps:
-                        if re.search(g, line, re.IGNORECASE):
+                        if re.search(g, line, flags=self.case):
                             if line not in matches:
                                 matches.append(line)
 
@@ -250,7 +254,7 @@ class Star:
         self.readme = kwargs["readme"] or ""
         self.matches = []  # Set by Findstar.filter_stars method
 
-    def display(self, greps):
+    def display(self, greps, case):
         """Output the matching repositories.
         The repo names are in bold green.
         The repo url are in blue.
@@ -272,7 +276,7 @@ class Star:
                         Fore.RED, Fore.RESET
                     ),
                     match,
-                    flags=re.IGNORECASE
+                    flags=case
                 )
             print(f"- {match.strip()}")
 
@@ -365,6 +369,12 @@ if __name__ == "__main__":
         "--flush",
         action="store_true",
         help="refresh cache"
+    )
+    parser.add_argument(
+        "-s",
+        "--case-sensitive",
+        action="store_true",
+        help="match greps case-sensitively"
     )
     parser.add_argument(
         "-a",

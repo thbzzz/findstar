@@ -19,7 +19,7 @@ pip3 install --user -r requirements.txt
 ## Usage
 
 ```
-findstar.py [-h] -u USERNAME [-f] [-a] [greps [greps ...]]
+usage: findstar.py [-h] -u USERNAME [-f] [-s] [-a] [greps [greps ...]]
 
 Grep over your github starred repositories!
 
@@ -31,6 +31,7 @@ optional arguments:
   -u USERNAME, --username USERNAME
                         github username
   -f, --flush           refresh cache
+  -s, --case-sensitive  match greps case-sensitively
   -a, --and             match greps using AND instead of OR
 ```
 
@@ -42,10 +43,10 @@ Next times you run `findstar.py -u {username}`, the default behavior is to get t
 
 ```bash
 findstar.py -u thbzzz kerberos
-findstar.py -u thbzzz kerberos samba
-findstar.py -u thbzzz -a kerberos samba
-findstar.py -u thbzzz -f -a kerberos samba
-findstar.py -u thbzzz -a kerberos samba thegame ldap
+findstar.py -u thbzzz active directory
+findstar.py -u thbzzz -a active directory
+findstar.py -u thbzzz -s -a Active Directory
+findstar.py -u thbzzz -f -s -a Active Directory CVE
 ```
 
 ## Contributing
