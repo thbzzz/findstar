@@ -1,5 +1,9 @@
 # findstar
 
+![GitHub last commit](https://img.shields.io/github/last-commit/thbzzz/findstar)
+![GitHub](https://img.shields.io/github/license/thbzzz/findstar)
+![Twitter Follow](https://img.shields.io/twitter/follow/thbz__?style=social)
+
 Findstar is a Python CLI utility to quickly retrieve a repository that you starred on GitHub.
 
 You can search through every user's starred repositories for keywords, kind of like grep.
@@ -48,6 +52,11 @@ findstar.py -u thbzzz -a active directory
 findstar.py -u thbzzz -s -a Active Directory
 findstar.py -u thbzzz -f -s -a Active Directory CVE
 ```
+
+## Todo
+
+- Search inside repos' names
+- Search by repo name/description/readme only
 
 ## Contributing
 Pull requests are welcome.
