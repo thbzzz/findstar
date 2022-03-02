@@ -278,7 +278,7 @@ class Star:
                     match,
                     flags=case
                 )
-            print(f"- {match.strip()}")
+            print(f"{match.strip()}")
 
         print()
 
